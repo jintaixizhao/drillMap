@@ -7,4 +7,4 @@
 node server
 ```
 
-在浏览器中打开http://localhost:3456然后就可以看到效果。
+在浏览器中打开http://localhost:3456  然后就可以看到效果。
