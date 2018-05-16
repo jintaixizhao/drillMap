@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>地图下钻</title>
+    <meta charset="utf-8">
+    <script type="text/javascript" src="./static/echarts.js"></script>
+    <script type="text/javascript" src="./static/jquery.js"></script>
+    <script type="text/javascript" src="./assets/cityMap.js"></script>
+    <style>
+    .btn {
+        position: absolute;
+        z-index: 99999;
+        top: 0;
+        right: 0;
+        width: 80px;
+        height: 30px;
+        cursor: pointer;
+        background: #088;
+        color: #fff;
+        font-size: 16px;
+        text-align: center;
+        line-height: 30px
+    }
+
+    .main {
+        width: 100%;
+        height: 600px;
+    }
+    </style>
+</head>
+
+<body>
+    <div id="btn" class="btn">返回上级</div>
+    <div id="main" class="main"></div>
+    <script type="text/javascript">
+    const myChart = echarts.init(document.getElementById('main'));
+    //存储切换的每一级地图信息
+    const mapStack = [];
+    let curMap = {};
+    //地图配置信息
+    const option = {
+        background: "#fcc",
+        tooltip: {
+            trigger: 'item',
+            formatter: '{b}'
+        },
+        series: [{
+            name: '',
+            type: 'map',
+            mapType: '',
+            selectedMode: 'single',
+            label: {
+                normal: {
+                    show: true
+                },
+                emphasis: {
+                    show: true
+                }
+            },
+            data: []
+        }]
+    };
+    //初始化地图
+    loadMap('100000', 'china');
+    /**
+       绑定用户切换地图区域事件
+       cityMap对象存储着地图区域名称和区域的信息(name-code)
+       当mapCode有值,说明可以切换到下级地图
+       同时保存上级地图的编号和名称  
+    */
+    myChart.on('mapselectchanged', function(params) {
+        const name = params.batch[0].name;
+        const mapCode = cityMap[name];
+        console.log(name);
+        if (!mapCode) { //如果地图无法继续下钻，则让点击的区域呈现选中状态
+            option.series[0].data = [{
+                name: name,
+                selected: true,
+            }]
+            myChart.setOption(option);
+            return false;
+        } else {
+
+            loadMap(mapCode, name);
+
+            //将上一级地图信息压入mapStack
+            mapStack.push({
+                mapCode: curMap.mapCode,
+                mapName: curMap.mapName
+            });
+        }
+    });
+    /**
+       绑定按钮点击事件，加载上一级地图
+    */
+    $("#btn").on('click', function() {
+        const map = mapStack.pop();
+        //清空data值，即默认选中值，由于地图是下钻，所以也可不清空
+        option.series[0].data = []
+        if (!mapStack.length && !map) {
+            return;
+        }
+        loadMap(map.mapCode, map.mapName);
+    });
+    /**
+       加载地图：根据地图所在省市的行政编号，
+       获取对应的json地图数据，然后向echarts注册该区域的地图
+       最后加载地图信息
+       @params {String} mapCode:地图行政编号,for example['中国':'100000', '湖南': '430000']
+       @params {String} mapName: 地图名称
+    */
+    function loadMap(mapCode, mapName) {
+        $.getJSON('./assets/main-city/' + mapCode + '.json', function(data) {
+            if (data) {
+                echarts.registerMap(mapName, data);
+                option.series[0].mapType = mapName
+                myChart.setOption(option);
+                curMap = {
+                    mapCode: mapCode,
+                    mapName: mapName
+                };
+            } else {
+                alert('无法加载该地图');
+            }
+        });
+    }
+    </script>
+</body>
+
+</html>
